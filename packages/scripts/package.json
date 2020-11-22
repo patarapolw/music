@@ -1,0 +1,25 @@
+{
+  "name": "@music-browser/scripts",
+  "version": "0.1.0",
+  "description": "",
+  "main": "index.js",
+  "private": true,
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "Pacharapol Withayasakpunt <polv@polv.cc> (https://www.polv.cc/)",
+  "license": "MIT",
+  "dependencies": {
+    "chordsheetjs": "^3.2.0",
+    "showdown": "^1.9.1"
+  },
+  "devDependencies": {
+    "@types/chordsheetjs": "^2.8.0",
+    "@types/node": "^14.14.9",
+    "@types/showdown": "^1.9.3",
+    "parcel-bundler": "^1.12.4",
+    "ts-node": "^9.0.0",
+    "typescript": "^4.1.2"
+  }
+}

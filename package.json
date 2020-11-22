@@ -1,0 +1,23 @@
+{
+  "name": "music-browser",
+  "version": "0.1.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/patarapolw/music-browser.git"
+  },
+  "keywords": [],
+  "author": "Pacharapol Withayasakpunt <polv@polv.cc> (https://www.polv.cc/)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/patarapolw/music-browser/issues"
+  },
+  "homepage": "https://github.com/patarapolw/music-browser#readme",
+  "devDependencies": {
+    "prettier": "^2.2.0"
+  }
+}
