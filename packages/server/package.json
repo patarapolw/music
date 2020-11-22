@@ -12,13 +12,15 @@
   "author": "Pacharapol Withayasakpunt <polv@polv.cc> (https://www.polv.cc/)",
   "license": "MIT",
   "dependencies": {
-    "better-sqlite3": "^7.1.1",
+    "@mikro-orm/core": "^4.3.1",
+    "@mikro-orm/migrations": "^4.3.1",
+    "@mikro-orm/sqlite": "^4.3.1",
     "fast-glob": "^3.2.4",
+    "gray-matter": "^4.0.2",
     "id128": "^1.6.3",
     "js-yaml": "^3.14.0"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^5.4.1",
     "@types/js-yaml": "^3.12.5",
     "@types/node": "^14.14.9",
     "ts-node": "^9.0.0",
