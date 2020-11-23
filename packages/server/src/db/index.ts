@@ -9,6 +9,7 @@ import {
   JoinTable,
   ManyToMany,
   ManyToOne,
+  OneToMany,
   PrimaryColumn,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
@@ -28,6 +29,9 @@ export class Person {
   @PrimaryGeneratedColumn() id!: number
   @Column({ unique: true, collation: 'NOCASE' }) name: string
 
+  @ManyToOne(() => Person, (p) => p.parent) aliases!: Person[]
+  @OneToMany(() => Person, (p) => p.aliases) parent?: Person
+
   constructor(name: string) {
     this.name = name
   }
@@ -37,6 +41,9 @@ export class Person {
 export class Title {
   @PrimaryGeneratedColumn() id!: number
   @Column({ unique: true, collation: 'NOCASE' }) name: string
+
+  @ManyToOne(() => Title, (p) => p.parent) aliases!: Title[]
+  @OneToMany(() => Title, (p) => p.aliases) parent?: Title
 
   constructor(name: string) {
     this.name = name
@@ -112,13 +119,12 @@ export class File {
         params
       )
       .then((rs: any[]) =>
-        orm
-          .getRepository(File)
-          .createQueryBuilder('f')
-          .leftJoinAndSelect('f.authors', 'person')
-          .leftJoinAndSelect('f.title', 'title')
-          .whereInIds(rs.map((r) => r.fileId))
-          .getMany()
+        orm.getRepository(File).findByIds(
+          rs.map((r) => r.fileId),
+          {
+            relations: ['authors', 'title']
+          }
+        )
       )
       .then((rs) => {
         const m = new Map<string, File[]>()
@@ -134,8 +140,8 @@ export class File {
           authors: files
             .flatMap((f) => f.authors.map((a) => a.name))
             .filter((a, i, arr) => arr.indexOf(a) === i),
-          title: files[0].title,
-          files
+          title: files[0].title.name,
+          paths: files.map((f) => f.path)
         }))
       })
   }
