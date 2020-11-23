@@ -1,5 +1,7 @@
 ---
-id: let-to-be
+id: test-let-to-be
+title: Let it be
+author: The Beatles
 ---
 
 <div class="lyrics" markdown="1">

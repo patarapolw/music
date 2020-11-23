@@ -1,14 +1,19 @@
-import {
-  Cascade,
-  Entity,
-  JsonType,
-  ManyToOne,
-  MikroORM,
-  PrimaryKey,
-  Property
-} from '@mikro-orm/core'
+import 'reflect-metadata'
 
-import { SqliteDriver } from '@mikro-orm/sqlite'
+import {
+  BaseEntity,
+  Column,
+  Connection,
+  Entity,
+  In,
+  Index,
+  ManyToOne,
+  PrimaryColumn,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+  createConnection
+} from 'typeorm'
+
 import { Ulid } from 'id128'
 import crypto from 'crypto'
 import fs from 'fs'
@@ -18,42 +23,54 @@ import path from 'path'
 import yaml from 'js-yaml'
 
 @Entity()
-export class Person {
-  @PrimaryKey() id!: number
-  @Property({ unique: true }) name: string
+export class Person extends BaseEntity {
+  @PrimaryGeneratedColumn() id!: number
+  @Column({ unique: true, collation: 'NOCASE' }) name: string
 
   constructor(name: string) {
+    super()
     this.name = name
   }
 }
 
 @Entity()
-export class Title {
-  @PrimaryKey() id!: number
-  @Property({ unique: true }) name: string
+export class Title extends BaseEntity {
+  @PrimaryGeneratedColumn() id!: number
+  @Column({ unique: true, collation: 'NOCASE' }) name: string
 
   constructor(name: string) {
+    super()
     this.name = name
   }
 }
 
 @Entity()
-export class File {
-  @PrimaryKey() id = Ulid.generate().toCanonical()
-  @Property({ onUpdate: () => new Date(), nullable: true }) updatedAt?: Date
+export class File extends BaseEntity {
+  @PrimaryColumn() id!: string
+  @UpdateDateColumn() updatedAt?: Date
 
-  @Property({ unique: true }) path!: string
-  @Property({ index: true, nullable: true }) size?: number
-  @Property({ index: true, nullable: true }) hash?: string
+  @Column({ unique: true }) path!: string
+  @Column({ nullable: true }) @Index() size?: number
+  @Column({ nullable: true }) @Index() hash?: string
 
-  @ManyToOne({ cascade: [Cascade.ALL], nullable: true }) author?: Person
-  @ManyToOne({ cascade: [Cascade.ALL] }) title!: Title
+  @ManyToOne(() => Person, {
+    onUpdate: 'CASCADE',
+    onDelete: 'SET NULL',
+    nullable: true
+  })
+  author?: Person
 
-  @Property({ nullable: true }) description?: string
-  @Property({ type: JsonType, nullable: true }) matter?: any
+  @ManyToOne(() => Title, {
+    onUpdate: 'CASCADE',
+    onDelete: 'CASCADE'
+  })
+  title!: Title
+
+  @Column({ nullable: true }) description?: string
+  @Column({ type: 'simple-json', nullable: true }) matter?: any
 
   static async findOrCreate(
-    orm: MikroORM<SqliteDriver>,
+    orm: Connection,
     entries: {
       filename: string
     }[]
@@ -65,6 +82,7 @@ export class File {
       let title = lastSegment
         .replace(/\[[^\]]+\]/, '')
         .replace(/\.[^\.]+$/, '')
+        .replace(/\([^)]+\)$/, '')
         .trim()
 
       let author = (() => {
@@ -91,7 +109,13 @@ export class File {
 
       if (['.md', '.markdown'].includes(extension)) {
         const {
-          data: { _id, _title, _desc, ...data }
+          data: {
+            id: _id,
+            title: _title,
+            author: _author,
+            description: _desc,
+            ...data
+          }
         } = matterFn(fs.readFileSync(filename, 'utf-8'), {
           engines: {
             yaml: (s: string) =>
@@ -103,6 +127,7 @@ export class File {
 
         id = _id || id
         title = _title || title
+        author = _author || author
 
         if (_desc) {
           description = description ? description + '\n' + _desc : _desc
@@ -136,13 +161,10 @@ export class File {
     })
 
     const [elTitles, elAuthors, elFiles] = await Promise.all([
-      orm.em
-        .find(Title, {
-          $or: ents.map((et) => ({
-            name: {
-              $like: et.title.replace(/[%_[]/g, '[$&]')
-            }
-          }))
+      orm
+        .getRepository(Title)
+        .find({
+          name: In(ents.map((el) => el.title))
         })
         .then((rs) => {
           const map = new Map<string, Title>()
@@ -150,22 +172,16 @@ export class File {
           return map
         }),
       (async (): Promise<Map<string, Person>> => {
-        const names = ents
-          .map((et) => et.author!)
-          .filter((el) => el)
-          .map((el) => el.toLocaleLowerCase())
+        const names = ents.map((et) => et.author!).filter((el) => el)
 
         if (!names.length) {
           return new Map()
         }
 
-        return orm.em
-          .find(Person, {
-            $or: names.map((et) => ({
-              name: {
-                $like: et.replace(/[%_[]/g, '[$&]')
-              }
-            }))
+        return orm
+          .getRepository(Person)
+          .find({
+            name: In(names)
           })
           .then((rs) => {
             const map = new Map<string, Person>()
@@ -173,11 +189,10 @@ export class File {
             return map
           })
       })(),
-      orm.em
-        .find(File, {
-          path: {
-            $in: ents.map((et) => et.path)
-          }
+      orm
+        .getRepository(File)
+        .find({
+          path: In(ents.map((et) => et.path))
         })
         .then((rs) => {
           const map = new Map<string, File>()
@@ -207,7 +222,7 @@ export class File {
       }
 
       if (!existing) {
-        el.id = et.id || h || el.id
+        el.id = et.id || h || Ulid.generate().toCanonical()
       }
 
       el.title =
@@ -235,45 +250,42 @@ export class File {
       return el
     })
 
-    await orm.em.persistAndFlush([...newTitles, ...newAuthors, ...allEnts])
+    if (newTitles.length) {
+      const repo = orm.getRepository(Title)
+      await Promise.all(newTitles.map((r) => repo.save(r)))
+    }
+
+    if (newAuthors.length) {
+      const repo = orm.getRepository(Person)
+      await Promise.all(newAuthors.map((r) => repo.save(r)))
+    }
+
+    const repo = orm.getRepository(File)
+    await Promise.all(allEnts.map((r) => repo.save(r)))
 
     return allEnts
   }
-
-  private constructor() {}
 }
 
 export async function initDatabase(filename: string) {
-  const isExists = fs.existsSync(filename)
-
-  const orm = await MikroORM.init<SqliteDriver>({
+  return createConnection({
+    type: 'better-sqlite3',
     entities: [Person, Title, File],
-    type: 'sqlite',
-    dbName: filename
+    database: filename,
+    synchronize: true
   })
-
-  if (!isExists) {
-    const migrator = orm.getMigrator()
-    await migrator.createMigration()
-    await migrator.up()
-  }
-
-  return orm
 }
 
-async function main() {
-  const orm = await initDatabase('../../_data/user.db')
-
-  await glob('../../_data/**/*.{pdf,md,ly}').then((rs) =>
+export async function build(
+  orm: Connection,
+  paths: string | string[]
+): Promise<Connection> {
+  await glob(paths).then((rs) =>
     File.findOrCreate(
       orm,
       rs.map((filename) => ({ filename }))
     )
   )
 
-  await orm.close()
-}
-
-if (require.main === module) {
-  main().catch(console.error)
+  return orm
 }
