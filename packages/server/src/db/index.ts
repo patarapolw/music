@@ -1,12 +1,13 @@
 import 'reflect-metadata'
 
 import {
-  BaseEntity,
   Column,
   Connection,
   Entity,
   In,
   Index,
+  JoinTable,
+  ManyToMany,
   ManyToOne,
   PrimaryColumn,
   PrimaryGeneratedColumn,
@@ -23,29 +24,27 @@ import path from 'path'
 import yaml from 'js-yaml'
 
 @Entity()
-export class Person extends BaseEntity {
+export class Person {
   @PrimaryGeneratedColumn() id!: number
   @Column({ unique: true, collation: 'NOCASE' }) name: string
 
   constructor(name: string) {
-    super()
     this.name = name
   }
 }
 
 @Entity()
-export class Title extends BaseEntity {
+export class Title {
   @PrimaryGeneratedColumn() id!: number
   @Column({ unique: true, collation: 'NOCASE' }) name: string
 
   constructor(name: string) {
-    super()
     this.name = name
   }
 }
 
 @Entity()
-export class File extends BaseEntity {
+export class File {
   @PrimaryColumn() id!: string
   @UpdateDateColumn() updatedAt?: Date
 
@@ -53,12 +52,9 @@ export class File extends BaseEntity {
   @Column({ nullable: true }) @Index() size?: number
   @Column({ nullable: true }) @Index() hash?: string
 
-  @ManyToOne(() => Person, {
-    onUpdate: 'CASCADE',
-    onDelete: 'SET NULL',
-    nullable: true
-  })
-  author?: Person
+  @ManyToMany(() => Person, { cascade: true })
+  @JoinTable({ name: 'file_authors' })
+  authors!: Person[]
 
   @ManyToOne(() => Title, {
     onUpdate: 'CASCADE',
@@ -68,6 +64,81 @@ export class File extends BaseEntity {
 
   @Column({ nullable: true }) description?: string
   @Column({ type: 'simple-json', nullable: true }) matter?: any
+
+  static async findDuplicates(orm: Connection) {
+    return this.rawQuery(orm, { having: 'COUNT(path) > 1' })
+  }
+
+  static async find(orm: Connection, ...conds: string[]) {
+    const params: any[] = []
+    const where = conds
+      .map((c) => {
+        const [k, v] = c.split(/:/)
+        params.push(v)
+        return `${k} LIKE '%'||?||'%'`
+      })
+      .join(' AND ')
+
+    return this.rawQuery(orm, { where, params })
+  }
+
+  private static async rawQuery(
+    orm: Connection,
+    {
+      where,
+      having,
+      params
+    }: {
+      where?: string
+      having?: string
+      params?: any[]
+    } = {}
+  ) {
+    return orm
+      .query(
+        /*sql*/ `
+    SELECT
+      f.id    fileId,
+      t.name  title,
+      p.name  author,
+      "description"
+    FROM      "file"          f
+    LEFT JOIN file_authors    fa ON fa.fileId = f.id
+    LEFT JOIN person          p  ON fa.personId = p.id
+    LEFT JOIN title           t  ON f.titleId = t.id
+    ${where ? `WHERE ${where}` : ''}
+    ${having ? `HAVING ${having}` : ''}
+    `,
+        params
+      )
+      .then((rs: any[]) =>
+        orm
+          .getRepository(File)
+          .createQueryBuilder('f')
+          .leftJoinAndSelect('f.authors', 'person')
+          .leftJoinAndSelect('f.title', 'title')
+          .whereInIds(rs.map((r) => r.fileId))
+          .getMany()
+      )
+      .then((rs) => {
+        const m = new Map<string, File[]>()
+        rs.map((r) => {
+          const author = r.authors[0]?.name || ''
+          const k = author + '\x1f' + r.title.name
+          const arr = m.get(k) || []
+          arr.push(r)
+          m.set(k, arr)
+        })
+
+        return Array.from(m).map(([_, files]) => ({
+          authors: files
+            .flatMap((f) => f.authors.map((a) => a.name))
+            .filter((a, i, arr) => arr.indexOf(a) === i),
+          title: files[0].title,
+          files
+        }))
+      })
+  }
 
   static async findOrCreate(
     orm: Connection,
@@ -80,18 +151,21 @@ export class File extends BaseEntity {
       const extension = _ext.toLocaleLowerCase()
 
       let title = lastSegment
-        .replace(/\[[^\]]+\]/, '')
+        .replace(/\[[^\]]+\]/g, '')
         .replace(/\.[^\.]+$/, '')
         .replace(/\([^)]+\)$/, '')
         .trim()
 
-      let author = (() => {
-        const m = /\[([^\]]+)\]/.exec(lastSegment)
-        if (m) {
-          return m[1] || null
+      const authors = (() => {
+        const out: string[] = []
+        const re = /\[([^\]]+)\]/g
+        let m: RegExpExecArray | null
+
+        while ((m = re.exec(lastSegment))) {
+          out.push(m[1])
         }
 
-        return null
+        return out
       })()
 
       let description =
@@ -127,7 +201,12 @@ export class File extends BaseEntity {
 
         id = _id || id
         title = _title || title
-        author = _author || author
+
+        if (typeof _author === 'string') {
+          authors.unshift(_author)
+        } else if (Array.isArray(_author)) {
+          authors.unshift(..._author)
+        }
 
         if (_desc) {
           description = description ? description + '\n' + _desc : _desc
@@ -152,7 +231,12 @@ export class File extends BaseEntity {
       return {
         path: path.resolve(filename),
         extension,
-        author,
+        authors: authors.filter(
+          (a, i, arr) =>
+            arr
+              .map((x) => x.toLocaleLowerCase())
+              .indexOf(a.toLocaleLowerCase()) === i
+        ),
         title,
         description,
         matter,
@@ -172,7 +256,7 @@ export class File extends BaseEntity {
           return map
         }),
       (async (): Promise<Map<string, Person>> => {
-        const names = ents.map((et) => et.author!).filter((el) => el)
+        const names = ents.map((et) => et.authors).flat()
 
         if (!names.length) {
           return new Map()
@@ -234,16 +318,17 @@ export class File extends BaseEntity {
           return t
         })()
 
-      if (et.author) {
-        el.author =
-          elAuthors.get(et.author.toLocaleLowerCase()) ||
-          (() => {
-            const t = new Person(et.author)
-            newAuthors.push(t)
-            elAuthors.set(et.author.toLocaleLowerCase(), t)
-            return t
-          })()
-      }
+      el.authors = et.authors.map((a) => {
+        const a0 = elAuthors.get(a.toLocaleLowerCase())
+        if (a0) {
+          return a0
+        }
+
+        const t = new Person(a)
+        newAuthors.push(t)
+        elAuthors.set(a.toLocaleLowerCase(), t)
+        return t
+      })
 
       el.path = et.path
 
