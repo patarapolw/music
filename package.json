@@ -1,9 +1,12 @@
 {
-  "name": "music-browser",
+  "name": "@patarapolw/music-browser",
   "version": "0.1.0",
   "description": "",
+  "private": true,
   "main": "index.js",
   "scripts": {
+    "docs:dev": "vuepress dev _docs",
+    "docs:build": "vuepress build _docs",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -17,7 +20,19 @@
     "url": "https://github.com/patarapolw/music-browser/issues"
   },
   "homepage": "https://github.com/patarapolw/music-browser#readme",
+  "dependencies": {
+    "dree": "^2.5.0",
+    "gray-matter": "^4.0.2"
+  },
   "devDependencies": {
-    "prettier": "^2.2.0"
-  }
+    "prettier": "^2.2.0",
+    "vuepress": "^1.7.1"
+  },
+  "engines": {
+    "node": "12.x",
+    "npm": "please-use-pnpm",
+    "yarn": "please-use-pnpm",
+    "pnpm": "5.x"
+  },
+  "engineStrict": true
 }
