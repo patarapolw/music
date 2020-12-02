@@ -8,19 +8,28 @@
           </b-field>
         </form>
         <b-menu class="is-custom-mobile" :accordion="false" :activable="false">
-          <b-menu-list label="Menu">
+          <b-menu-list label="Links">
+            <b-menu-item label="Home" tag="router-link" to="/"></b-menu-item>
+          </b-menu-list>
+
+          <b-menu-list label="By artists">
             <b-menu-item
               v-for="(it, i) in sidebarItems"
               :key="i"
               :label="it.title"
               expanded
-              @click="it.fileId ? goto(it.fileId) : null"
+              :tag="it.id ? 'router-link' : 'a'"
+              :to="it.id ? `/item/${it.id}` : null"
             >
+              <template slot="label">
+                <nuxt-link></nuxt-link>
+              </template>
               <b-menu-item
                 v-for="(el, j) in it.children || []"
                 :key="j"
                 :label="el.title"
-                @click="el.fileId ? goto(el.fileId) : null"
+                tag="router-link"
+                :to="`/item/${el.id}`"
               ></b-menu-item>
             </b-menu-item>
           </b-menu-list>
@@ -36,40 +45,56 @@
 
 <script lang="ts">
 import { Component, Vue } from 'nuxt-property-decorator'
+import ky from 'ky'
 
-@Component
+import { IDbEntry } from '~/server/db'
+
+@Component<DefaultLayout>({
+  async fetch() {
+    const { result } = (await ky.get('/api/all').json()) as {
+      result: IDbEntry[]
+    }
+
+    const authorMap = new Map<string | symbol, IDbEntry[]>()
+    const noAuthor = Symbol('noAuthor')
+    result.map((f) => {
+      const m = authorMap.get(f.author || noAuthor) || []
+      m.push(f)
+      authorMap.set(f.author || noAuthor, m)
+    })
+
+    this.sidebarItems = Array.from(authorMap)
+      .filter(([k]) => typeof k === 'string')
+      .sort(([k1], [k2]) => (k1 as string).localeCompare(k2 as string))
+      .map(([k, m]) => {
+        return {
+          title: k as string,
+          children: m.sort(({ id: i1 }, { id: i2 }) => i1.localeCompare(i2)),
+        }
+      })
+
+    if (authorMap.has(noAuthor)) {
+      this.sidebarItems = [
+        ...this.sidebarItems,
+        ...authorMap
+          .get(noAuthor)!
+          .sort(({ id: i1 }, { id: i2 }) => i1.localeCompare(i2)),
+      ]
+    }
+  },
+})
 export default class DefaultLayout extends Vue {
   isDrawer = false
   q = this.$route.query.q as string
 
-  readonly sidebarItems = [
-    {
-      title: 'Home',
-      children: [
-        {
-          title: 'File 1',
-          fileId: 'file1',
-        },
-      ],
-    },
-    {
-      title: 'Inspire',
-      children: [
-        {
-          title: 'File 2',
-          fileId: 'file2',
-        },
-      ],
-    },
-    {
-      title: 'File 3',
-      fileId: 'file3',
-    },
-  ]
-
-  goto(fileId: string) {
-    this.$router.push(`/item/${fileId}`)
-  }
+  sidebarItems: {
+    title: string
+    id?: string
+    children?: {
+      title: string
+      id?: string
+    }[]
+  }[] = []
 
   doSearch() {
     this.$router.push({
@@ -96,9 +121,12 @@ export default class DefaultLayout extends Vue {
     }
   }
 
-  &:not(:hover) ::v-deep span {
-    white-space: nowrap;
-    overflow: hidden;
+  &:not(:hover) ::v-deep {
+    p,
+    span {
+      white-space: nowrap;
+      overflow: hidden;
+    }
   }
 }
 </style>

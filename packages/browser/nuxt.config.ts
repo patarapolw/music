@@ -6,6 +6,10 @@ export default async (): Promise<NuxtConfig> => {
     // Disable server-side rendering (https://go.nuxtjs.dev/ssr-mode)
     ssr: false,
 
+    router: {
+      mode: 'hash',
+    },
+
     // Global page headers (https://go.nuxtjs.dev/config-head)
     head: {
       title: 'music-browser',
@@ -36,19 +40,14 @@ export default async (): Promise<NuxtConfig> => {
     modules: [
       // https://go.nuxtjs.dev/buefy
       'nuxt-buefy',
-      // https://go.nuxtjs.dev/axios
-      '@nuxtjs/axios',
     ],
-
-    // Axios module configuration (https://go.nuxtjs.dev/config-axios)
-    axios: {},
 
     // Build Configuration (https://go.nuxtjs.dev/config-build)
     build: {},
     serverMiddleware: [
       { path: '/api', handler: '~/server/index.ts' },
       {
-        path: '/media',
+        path: '/_data/music-sheets',
         handler: serveStatic(
           '/home/patarapolw/projects/music-browser/_data/music-sheets'
         ),

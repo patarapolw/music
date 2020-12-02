@@ -1,3 +1,0 @@
----
-title: Wolfgang Amadeus Mozart
----

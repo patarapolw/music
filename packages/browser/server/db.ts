@@ -8,10 +8,17 @@ import matter from 'gray-matter'
 import sanitize from 'sanitize-filename'
 import showdown from 'showdown'
 
+export interface IDbEntry {
+  id: string
+  author?: string
+  title: string
+}
+
 export default class Db {
   sql: sqlite3.Database
   mdConverter = new showdown.Converter({
     metadata: true,
+    openLinksInNewWindow: true,
   })
 
   $ = cheerio.load('')
@@ -67,8 +74,8 @@ export default class Db {
           WHERE id = @fileId
           `),
           insert: this.sql.prepare(/* sql */ `
-          INSERT INTO files (id, filePath, author, title)
-          VALUES (@fileId, @filePath, @authorRepr, @titleRepr)
+          INSERT INTO files (id, originalPath, filePath, author, title)
+          VALUES (@fileId, @originalPath, @filePath, @authorRepr, @titleRepr)
           `),
         },
         q: {
@@ -89,101 +96,143 @@ export default class Db {
       }
 
       this.sql.transaction(() => {
-        glob
-          .sync('**/*.md', {
-            cwd: this.root,
-          })
-          .map((f) => {
-            const filePath = path.resolve(this.root, f)
-            const { data: header, content: markdown } = matter(
-              fs.readFileSync(filePath, 'utf-8')
-            )
-            const originalPath: string = header.originalPath || filePath
+        const files = glob.sync('**/*.md', {
+          cwd: this.root,
+        })
 
-            const author: string[] = Array.isArray(header.author)
-              ? header.author
-              : typeof header.author === 'string'
-              ? [header.author]
-              : []
-            const authorRepr: string | undefined = author[0]
+        files.map((f) => {
+          const filePath = path.resolve(this.root, f)
+          const { data: header, content: markdown } = matter(
+            fs.readFileSync(filePath, 'utf-8')
+          )
+          const originalPath: string = header.originalPath || filePath
 
-            const title: string[] = Array.isArray(header.title)
-              ? header.title
-              : typeof header.title === 'string'
-              ? [header.title]
-              : []
-            if (!title.length) {
-              title.push(path.parse(f).name)
-            }
-            const titleRepr = title[0]
+          const author: string[] = Array.isArray(header.author)
+            ? header.author
+            : typeof header.author === 'string'
+            ? [header.author]
+            : []
+          const authorRepr: string | undefined = author[0]
 
-            const tag: string[] = Array.isArray(header.tag)
-              ? header.tag
-              : typeof header.tag === 'string'
-              ? [header.tag]
-              : []
+          const title: string[] = Array.isArray(header.title)
+            ? header.title
+            : typeof header.title === 'string'
+            ? [header.title]
+            : []
+          if (!title.length) {
+            title.push(path.parse(f).name)
+          }
+          const titleRepr = title[0]
 
-            const fileId: string = (() => {
-              const r = stmt.files.get.get({ originalPath })
-              if (r) {
-                stmt.files.set.run({
-                  fileId: r.fileId,
-                  filePath,
-                  authorRepr,
-                  titleRepr,
-                })
+          const tag: string[] = Array.isArray(header.tag)
+            ? header.tag
+            : typeof header.tag === 'string'
+            ? [header.tag]
+            : []
 
-                return r.fileId
-              }
-
-              const fileId = sanitize(f)
-
-              stmt.files.insert.run({
-                fileId,
+          const fileId: string = (() => {
+            const r = stmt.files.get.get({ originalPath })
+            if (r) {
+              stmt.files.set.run({
+                fileId: r.fileId,
                 filePath,
                 authorRepr,
                 titleRepr,
               })
 
-              return fileId
-            })()
+              return r.fileId
+            }
 
-            const content = this.$('<div>')
-              .html(this.mdConverter.makeHtml(markdown))
-              .text()
+            const fileId = sanitize(f)
 
-            const r = stmt.q.set.run({
+            stmt.files.insert.run({
+              fileId,
+              originalPath,
+              filePath,
+              authorRepr,
+              titleRepr,
+            })
+
+            return fileId
+          })()
+
+          const content = this.$('<div>')
+            .html(this.mdConverter.makeHtml(markdown))
+            .text()
+
+          const r = stmt.q.set.run({
+            author: author.join(', '),
+            title: title.join(', '),
+            tag: tag.join(', '),
+            content,
+            fileId,
+          })
+
+          if (!r.changes) {
+            stmt.q.insert.run({
               author: author.join(', '),
               title: title.join(', '),
               tag: tag.join(', '),
               content,
               fileId,
-            }).lastInsertRowid
+            })
+          }
+        })
 
-            if (!r) {
-              stmt.q.insert.run({
-                author: author.join(', '),
-                title: title.join(', '),
-                tag: tag.join(', '),
-                content,
-                fileId,
-              })
-            }
-          })
+        const fileIds = this.sql
+          .prepare(
+            /* sql */ `
+        SELECT id fileId
+        FROM files
+        WHERE filePath NOT IN (${Array(files.length).fill('?')}) 
+        `
+          )
+          .all(files.map((f) => path.resolve(this.root, f)))
+          .map(({ fileId }) => fileId as string)
+
+        if (fileIds.length) {
+          this.sql
+            .prepare(
+              /* sql */ `
+          DELETE FROM q
+          WHERE fileId IN (${Array(fileIds.length).fill('?')})
+          `
+            )
+            .run(fileIds)
+
+          this.sql
+            .prepare(
+              /* sql */ `
+          DELETE FROM files
+          WHERE id IN (${Array(fileIds.length).fill('?')})
+          `
+            )
+            .run(fileIds)
+        }
       })()
     }
   }
 
-  getRecent(
-    offset = 0
-  ): {
-    author: string
-    title: string
-  }[] {
+  all(): IDbEntry[] {
     return this.sql
       .prepare(
         /* sql */ `
     SELECT
+      id,
+      author,
+      title
+    FROM files
+    `
+      )
+      .all()
+  }
+
+  getRecent(offset = 0): IDbEntry[] {
+    return this.sql
+      .prepare(
+        /* sql */ `
+    SELECT
+      id,
       author,
       title
     FROM files
@@ -195,16 +244,12 @@ export default class Db {
       .all()
   }
 
-  getFavorite(
-    offset = 0
-  ): {
-    author: string
-    title: string
-  }[] {
+  getFavorite(offset = 0): IDbEntry[] {
     return this.sql
       .prepare(
         /* sql */ `
     SELECT
+      id,
       author,
       title
     FROM files
@@ -216,17 +261,12 @@ export default class Db {
       .all()
   }
 
-  search(
-    q: string,
-    offset = 0
-  ): {
-    author: string
-    title: string
-  }[] {
+  search(q: string, offset = 0): IDbEntry[] {
     return this.sql
       .prepare(
         /* sql */ `
     SELECT
+      f.id      id,
       f.author  author,
       f.title   title
     FROM q

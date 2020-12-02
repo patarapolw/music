@@ -1,8 +1,9 @@
 ---
-title: Gabriel Fauré - Sicilienne, for cello & piano, Op. 78
+author: Gabriel Fauré
+title: Sicilienne, Op. 78
 ---
 
-# Gabriel Fauré - Sicilienne, for cello & piano, Op. 78
+## Gabriel Fauré - Sicilienne, for cello & piano, Op. 78
 
 <iframe width="560" height="315" src="https://www.youtube.com/embed/U5Y0uQLgriA" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 

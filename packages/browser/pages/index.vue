@@ -4,27 +4,30 @@
       <b-menu-list v-if="$route.query.q" label="Search Result">
         <b-menu-item
           v-for="f in result"
-          :key="f.fileId"
-          :label="f.title"
-          @click="goto(f.fileId)"
+          :key="f.id"
+          :label="format(f)"
+          tag="router-link"
+          :to="`/item/${f.id}`"
         ></b-menu-item>
       </b-menu-list>
 
       <b-menu-list label="Recent">
         <b-menu-item
           v-for="f in recent"
-          :key="f.fileId"
-          :label="f.title"
-          @click="goto(f.fileId)"
+          :key="f.id"
+          :label="format(f)"
+          tag="router-link"
+          :to="`/item/${f.id}`"
         ></b-menu-item>
       </b-menu-list>
 
       <b-menu-list label="Favorite">
         <b-menu-item
           v-for="f in favorite"
-          :key="f.fileId"
-          :label="f.title"
-          @click="goto(f.fileId)"
+          :key="f.id"
+          :label="format(f)"
+          tag="router-link"
+          :to="`/item/${f.id}`"
         ></b-menu-item>
       </b-menu-list>
     </b-menu>
@@ -32,55 +35,50 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue'
-export default Vue.extend({
-  async fetch() {
-    if (this.$route.query.q) {
-      const q = this.$route.query.q as string
+import { Vue, Component } from 'vue-property-decorator'
+import ky from 'ky'
 
-      this.result = [
-        {
-          title: 'File 1',
-          fileId: 'file1',
-        },
-        {
-          title: 'File 2',
-          fileId: 'file2',
-        },
-      ].filter(({ title, fileId }) => title.includes(q) || fileId.includes(q))
-    }
-  },
-  data() {
-    return {
-      result: [] as {
-        title: string
-        fileId: string
-      }[],
-      recent: [
-        {
-          title: 'File 2',
-          fileId: 'file2',
-        },
-        {
-          title: 'File 1',
-          fileId: 'file1',
-        },
-      ],
-      favorite: [
-        {
-          title: 'File 3',
-          fileId: 'file3',
-        },
-      ],
-    }
-  },
+import { IDbEntry } from '~/server/db'
+
+@Component<IndexPage>({
   watch: {
     '$route.query.q': '$fetch',
   },
-  methods: {
-    goto(fileId: string) {
-      this.$router.push(`/item/${fileId}`)
-    },
+  async fetch() {
+    const [r1, r2] = (await Promise.all([
+      ky.get('/api/recent').json(),
+      ky.get('/api/favorite').json(),
+      (async () => {
+        if (this.$route.query.q) {
+          const q = this.$route.query.q as string
+
+          const { result } = (await ky
+            .get('/api/q', {
+              searchParams: { q },
+            })
+            .json()) as {
+            result: IDbEntry[]
+          }
+
+          this.result = result
+        }
+      })(),
+    ])) as {
+      result: IDbEntry[]
+    }[]
+
+    this.recent = r1.result
+    this.favorite = r2.result
   },
 })
+export default class IndexPage extends Vue {
+  result: IDbEntry[] = []
+  recent: IDbEntry[] = []
+  favorite: IDbEntry[] = []
+
+  format(it: IDbEntry) {
+    const author = it.author ? `[${it.author}] ` : ''
+    return author + it.title
+  }
+}
 </script>

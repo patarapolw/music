@@ -14,6 +14,12 @@ app.get('/', (req, res) => {
   res.send(db.get(id))
 })
 
+app.get('/all', (_, res) => {
+  res.send({
+    result: db.all(),
+  })
+})
+
 app.get('/q', (req, res) => {
   const { q, offset = '0' } = z
     .object({

@@ -16,5 +16,6 @@ module.exports = {
   rules: {
     'require-await': 0,
     'no-useless-constructor': 0,
+    'vue/no-v-html': 0,
   },
 }

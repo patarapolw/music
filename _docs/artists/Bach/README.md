@@ -1,3 +1,0 @@
----
-title: Johann Sebastian Bach
----

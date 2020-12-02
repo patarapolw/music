@@ -20,13 +20,8 @@
     "url": "https://github.com/patarapolw/music-browser/issues"
   },
   "homepage": "https://github.com/patarapolw/music-browser#readme",
-  "dependencies": {
-    "dree": "^2.5.0",
-    "gray-matter": "^4.0.2"
-  },
   "devDependencies": {
-    "prettier": "^2.2.0",
-    "vuepress": "^1.7.1"
+    "prettier": "^2.2.0"
   },
   "engines": {
     "node": "12.x",
