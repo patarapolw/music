@@ -1,4 +1,5 @@
 import { NuxtConfig } from '@nuxt/types'
+import serveStatic from 'serve-static'
 
 export default async (): Promise<NuxtConfig> => {
   return {
@@ -44,5 +45,14 @@ export default async (): Promise<NuxtConfig> => {
 
     // Build Configuration (https://go.nuxtjs.dev/config-build)
     build: {},
+    serverMiddleware: [
+      { path: '/api', handler: '~/server/index.ts' },
+      {
+        path: '/media',
+        handler: serveStatic(
+          '/home/patarapolw/projects/music-browser/_data/music-sheets'
+        ),
+      },
+    ],
   }
 }

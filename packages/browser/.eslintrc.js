@@ -15,5 +15,6 @@ module.exports = {
   // add your custom rules here
   rules: {
     'require-await': 0,
+    'no-useless-constructor': 0,
   },
 }
