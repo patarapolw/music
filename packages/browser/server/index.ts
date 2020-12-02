@@ -66,16 +66,28 @@ app.get('/favorite', (req, res) => {
   })
 })
 
-app.patch('/rate', (req, res) => {
-  const { id, d } = z
+app.get('/rate', (req, res) => {
+  const { id } = z
     .object({
       id: z.string(),
-      d: z.string().refine((s) => !isNaN(parseInt(s))),
     })
     .parse(req.query)
 
   res.send({
-    result: db.doRate(id, parseInt(d)),
+    result: db.getRating(id),
+  })
+})
+
+app.patch('/rate', (req, res) => {
+  const { id, rating } = z
+    .object({
+      id: z.string(),
+      rating: z.string().refine((s) => !isNaN(parseInt(s))),
+    })
+    .parse(req.query)
+
+  res.send({
+    result: db.doRate(id, parseInt(rating)),
   })
 })
 

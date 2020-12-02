@@ -2,9 +2,9 @@
 author: Johann Sebastian Bach
 title: Well-tempered Clavier
 description: 'Prelude and Fugue'
+tag:
+  - playable
 ---
-
-## Well-tempered Clavier
 
 <iframe width="560" height="315" src="https://www.youtube.com/embed/gVah1cr3pU0" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 

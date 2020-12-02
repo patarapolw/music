@@ -85,7 +85,7 @@ import { IDbEntry } from '~/server/db'
 })
 export default class DefaultLayout extends Vue {
   isDrawer = false
-  q = this.$route.query.q as string
+  q = (this.$route.query.q as string) || ''
 
   sidebarItems: {
     title: string

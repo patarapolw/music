@@ -1,5 +1,5 @@
 <template>
-  <section class="section">
+  <section class="section column is-offset-2-desktop is-8-desktop">
     <b-menu v-if="!$fetchState.pending">
       <b-menu-list v-if="$route.query.q" label="Search Result">
         <b-menu-item

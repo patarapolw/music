@@ -38,7 +38,7 @@ export default class Db {
       originalPath  TEXT NOT NULL,    -- absolute path
       filePath      TEXT NOT NULL,    -- absolute path
       lastRead      FLOAT,            -- +new Date() number; nullable
-      rating        INT,
+      rating        FLOAT DEFAULT 0,
       author        TEXT,
       title         TEXT NOT NULL     -- at least last part of the filename
     );
@@ -49,11 +49,12 @@ export default class Db {
 
     this.sql.exec(/* sql */ `
     CREATE VIRTUAL TABLE IF NOT EXISTS q USING fts5(
-      fileId,     -- REFERENCES files(id)
-      author,     -- ', ' joined Set
-      title,      -- ', ' joined Set
-      tag,        -- ', ' joined Set
-      content     -- cleaned markdown-to-plaintext
+      fileId,         -- REFERENCES files(id)
+      author,         -- ', ' joined Set
+      title,          -- ', ' joined Set
+      tag,            -- ', ' joined Set
+      [description],  -- other searchable frontmatter
+      content         -- cleaned markdown-to-plaintext
     )
     `)
 
@@ -85,6 +86,7 @@ export default class Db {
             author = @author,
             title = @title,
             tag = @tag,
+            [description] = @description,
             content = @content
           WHERE fileId = @fileId
           `),
@@ -164,6 +166,7 @@ export default class Db {
             author: author.join(', '),
             title: title.join(', '),
             tag: tag.join(', '),
+            description: header.description || '',
             content,
             fileId,
           })
@@ -173,6 +176,7 @@ export default class Db {
               author: author.join(', '),
               title: title.join(', '),
               tag: tag.join(', '),
+              description: header.description || '',
               content,
               fileId,
             })
@@ -253,7 +257,7 @@ export default class Db {
       author,
       title
     FROM files
-    WHERE rating IS NOT NULL
+    WHERE rating > 2
     ORDER BY rating DESC
     LIMIT 10 OFFSET ${offset}
     `
@@ -280,11 +284,11 @@ export default class Db {
   }
 
   get(fileId: string): string | null {
-    const { filePath } =
+    const { filePath, title, author } =
       this.sql
         .prepare(
           /* sql */ `
-    SELECT filePath
+    SELECT filePath, title, author
     FROM files
     WHERE id = @fileId
     `
@@ -305,14 +309,21 @@ export default class Db {
           fileId,
         })
 
-      return this.mdConverter.makeHtml(fs.readFileSync(filePath, 'utf-8'))
+      let { content } = matter(fs.readFileSync(filePath, 'utf-8'))
+
+      if (!content.trim().startsWith('#')) {
+        content =
+          `## ${author ? `[${author}] ` : ''}${title}\n\n` + content.trim()
+      }
+
+      return this.mdConverter.makeHtml(content)
     }
 
     return null
   }
 
-  doRate(fileId: string, d: number): number {
-    let { rating } =
+  getRating(fileId: string): number {
+    const { rating } =
       this.sql
         .prepare(
           /* sql */ `
@@ -323,8 +334,10 @@ export default class Db {
         )
         .get({ fileId }) || {}
 
-    rating = (rating || 0) + d
+    return rating || 0
+  }
 
+  doRate(fileId: string, rating: number): number {
     this.sql
       .prepare(
         /* sql */ `

@@ -1,9 +1,9 @@
 ---
 author: Yiruma
 title: Songs of Yiruma
+tag:
+  - playable
 ---
-
-# Yiruma
 
 Lee Ru-ma (Korean: 이루마; born 15 February 1978), better known by his stage name Yiruma (Korean: 이루마), is a South Korean contemporary pianist and composer.
 
