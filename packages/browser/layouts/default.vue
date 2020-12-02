@@ -69,7 +69,9 @@ import { IDbEntry } from '~/server/db'
       .map(([k, m]) => {
         return {
           title: k as string,
-          children: m.sort(({ id: i1 }, { id: i2 }) => i1.localeCompare(i2)),
+          children: m.sort(({ title: i1 }, { title: i2 }) =>
+            i1.localeCompare(i2)
+          ),
         }
       })
 
@@ -78,7 +80,7 @@ import { IDbEntry } from '~/server/db'
         ...this.sidebarItems,
         ...authorMap
           .get(noAuthor)!
-          .sort(({ id: i1 }, { id: i2 }) => i1.localeCompare(i2)),
+          .sort(({ title: i1 }, { title: i2 }) => i1.localeCompare(i2)),
       ]
     }
   },

@@ -145,7 +145,9 @@ export default class Db {
               return r.fileId
             }
 
-            const fileId = sanitize(f)
+            const fileId =
+              sanitize(f.replace(/\.md$/, '')) +
+              Math.random().toString(36).substr(2)
 
             stmt.files.insert.run({
               fileId,
@@ -258,7 +260,7 @@ export default class Db {
       title
     FROM files
     WHERE rating > 2
-    ORDER BY rating DESC
+    ORDER BY rating DESC, lastRead DESC
     LIMIT 10 OFFSET ${offset}
     `
       )
@@ -276,7 +278,7 @@ export default class Db {
     FROM q
     JOIN files f ON f.id = q.fileId
     WHERE q = @q
-    ORDER BY RANK
+    ORDER BY RANK, f.lastRead DESC
     LIMIT 10 OFFSET ${offset}
     `
       )

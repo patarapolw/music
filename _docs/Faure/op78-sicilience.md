@@ -1,6 +1,6 @@
 ---
 author: Gabriel Fauré
-title: Sicilienne, Op. 78
+title: Sicilienne, Op.78
 tag:
   - playable
 ---
