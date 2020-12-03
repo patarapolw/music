@@ -5,6 +5,7 @@ import sqlite3 from 'better-sqlite3'
 import cheerio from 'cheerio'
 import glob from 'fast-glob'
 import matter from 'gray-matter'
+import yaml from 'js-yaml'
 import sanitize from 'sanitize-filename'
 import showdown from 'showdown'
 
@@ -59,6 +60,27 @@ export default class Db {
     `)
 
     {
+      const authorAliasReverse = new Map<string, string>()
+      const authorAlias: Record<string, string[]> = {}
+
+      try {
+        const { alias = {} } = yaml.safeLoad(
+          fs.readFileSync(path.resolve(this.root, 'config.yaml'), 'utf-8')
+        ) as Record<string, any>
+
+        Object.entries<string[]>(alias).map(([k, v]) => {
+          if (!(Array.isArray(v) && v.every((v0) => typeof v0 === 'string'))) {
+            return
+          }
+
+          authorAlias[k] = v
+
+          v.map((v0) => {
+            authorAliasReverse.set(v0, k)
+          })
+        })
+      } catch (_) {}
+
       const stmt = {
         files: {
           get: this.sql.prepare(/* sql */ `
@@ -109,12 +131,17 @@ export default class Db {
           )
           const originalPath: string = header.originalPath || filePath
 
-          const author: string[] = Array.isArray(header.author)
+          const author: string[] = (Array.isArray(header.author)
             ? header.author
             : typeof header.author === 'string'
             ? [header.author]
             : []
-          const authorRepr: string | undefined = author[0]
+          )
+            .map((v) => authorAlias[v] || [v])
+            .reduce((prev, v) => [...prev, ...v], [])
+            .filter((v, i, arr) => arr.indexOf(v) === i)
+          const authorRepr =
+            authorAliasReverse.get(author[0] as string) || author[0]
 
           const title: string[] = Array.isArray(header.title)
             ? header.title
