@@ -36,7 +36,7 @@
 
 <script lang="ts">
 import { Vue, Component } from 'vue-property-decorator'
-import ky from 'ky'
+import axios from 'axios'
 
 import { IDbEntry } from '~/server/db'
 
@@ -45,27 +45,33 @@ import { IDbEntry } from '~/server/db'
     '$route.query.q': '$fetch',
   },
   async fetch() {
-    const [r1, r2] = (await Promise.all([
-      ky.get('/api/recent').json(),
-      ky.get('/api/favorite').json(),
+    const [r1, r2] = await Promise.all([
+      axios
+        .get<{
+          result: IDbEntry[]
+        }>('/api/recent')
+        .then(({ data }) => data),
+      axios
+        .get<{
+          result: IDbEntry[]
+        }>('/api/favorite')
+        .then(({ data }) => data),
       (async () => {
         if (this.$route.query.q) {
           const q = this.$route.query.q as string
 
-          const { result } = (await ky
-            .get('/api/q', {
-              searchParams: { q },
-            })
-            .json()) as {
+          const {
+            data: { result },
+          } = await axios.get<{
             result: IDbEntry[]
-          }
+          }>('/api/q', {
+            params: { q },
+          })
 
           this.result = result
         }
       })(),
-    ])) as {
-      result: IDbEntry[]
-    }[]
+    ])
 
     this.recent = r1.result
     this.favorite = r2.result

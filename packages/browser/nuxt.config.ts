@@ -47,10 +47,8 @@ export default async (): Promise<NuxtConfig> => {
     serverMiddleware: [
       { path: '/api', handler: '~/server/index.ts' },
       {
-        path: '/_data/music-sheets',
-        handler: serveStatic(
-          '/home/patarapolw/projects/music-browser/_data/music-sheets'
-        ),
+        path: '/_media',
+        handler: serveStatic('/home/patarapolw/projects/music-browser/_media'),
       },
     ],
   }

@@ -45,15 +45,17 @@
 
 <script lang="ts">
 import { Component, Vue } from 'nuxt-property-decorator'
-import ky from 'ky'
+import axios from 'axios'
 
 import { IDbEntry } from '~/server/db'
 
 @Component<DefaultLayout>({
   async fetch() {
-    const { result } = (await ky.get('/api/all').json()) as {
+    const {
+      data: { result },
+    } = await axios.get<{
       result: IDbEntry[]
-    }
+    }>('/api/all')
 
     const authorMap = new Map<string | symbol, IDbEntry[]>()
     const noAuthor = Symbol('noAuthor')

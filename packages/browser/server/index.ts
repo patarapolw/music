@@ -14,6 +14,15 @@ app.get('/', (req, res) => {
   res.send(db.get(id))
 })
 
+app.delete('/', (req, res) => {
+  const id = z.string().parse(req.query.id)
+  db.doDelete(id)
+
+  res.status(201).send({
+    result: 'successfully deleted',
+  })
+})
+
 app.get('/all', (_, res) => {
   res.send({
     result: db.all(),
@@ -86,8 +95,12 @@ app.patch('/rate', (req, res) => {
     })
     .parse(req.query)
 
-  res.send({
-    result: db.doRate(id, parseInt(rating)),
+  const newRating = db.doRate(id, parseInt(rating))
+
+  res.status(201).send({
+    result: {
+      rating: newRating,
+    },
   })
 })
 

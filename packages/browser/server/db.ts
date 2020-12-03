@@ -173,7 +173,14 @@ export default class Db {
             }
 
             const fileId =
-              sanitize(f.replace(/\.md$/, '')) +
+              sanitize(
+                f
+                  .replace(/[\\/]/g, '--')
+                  .replace(/\.md$/i, '')
+                  .replace(/(index|README)$/, '')
+                  .replace(/--$/, '')
+              ) +
+              '-' +
               Math.random().toString(36).substr(2)
 
             stmt.files.insert.run({
@@ -381,5 +388,25 @@ export default class Db {
       })
 
     return rating
+  }
+
+  doDelete(fileId: string) {
+    this.sql
+      .prepare(
+        /* sql */ `
+    DELETE FROM q
+    WHERE fileId = @fileId
+    `
+      )
+      .run({ fileId })
+
+    this.sql
+      .prepare(
+        /* sql */ `
+    DELETE FROM files
+    WHERE id = @fileId
+    `
+      )
+      .run({ fileId })
   }
 }
