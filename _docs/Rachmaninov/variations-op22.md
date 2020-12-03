@@ -1,5 +1,5 @@
 ---
-author: Rachmaninoff
+author: Rachmaninov
 title: Variations on a Theme of Chopin, Op.22
 tag:
   - Chochieva
