@@ -24,7 +24,7 @@
       c' f d:m7 g c
     }
   }
-  
+
   \new Voice = "one" \relative ef' {
     \tempo 4 = 128
     \key c \major
@@ -61,9 +61,9 @@
     d4 a4 a d8~( a)
     c2. r8 a8
     a g16 e8. g8 a2~
-    a1 \bar "||"
+    a1 \bar "|."
   }
-  
+
   \new Lyrics \lyricsto "one" {
     When I was young, I'd list -- ened to the ra -- di -- o,
     wait -- ing for my fav -- orite songs.
