@@ -21,7 +21,7 @@
       c1 a:m e:m7
       c1 a:m g:7
       a:m a:m/g
-      c' f d2:m7 g c1
+      c' f d:m7 g c
     }
   }
   
@@ -33,7 +33,7 @@
     e4 g g8 e g e
     a g4 e4. e8 g
     a4 b4 e,8 g4 a8~
- 
+
     a2 r4 e8 g
     a4 e' d8 c4 b8~
     b4. g8 e g4 e8(
@@ -48,7 +48,7 @@
     c b4 a4. a8 b
     c4 c a8 c4 d8~
 
-    d2 c4 d    
+    d2 c4 d
     e8 e e e~ e4 d8 c
     b c b a~ a4 e8 g~
     g2 c4 d
@@ -58,9 +58,9 @@
     f e f g~ g4 f8 e
     f e f g~ g4 f8 g
     a4 a g8 f~ f d8~
-    d4 a8 a~ a d8~ a c~
-    c r8 a8
-    a g16 e8. g8 a8~
+    d4 a4 a d8~( a)
+    c2. r8 a8
+    a g16 e8. g8 a2~
     a1 \bar "||"
   }
   
