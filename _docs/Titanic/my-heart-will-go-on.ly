@@ -151,7 +151,7 @@ vocal = <<
   
   \break
   
-  ees'2 des4 c
+  ees'2 des4 c8 bes8~
   bes2 c4 des
   c2 bes4 aes
   g aes2 g4
@@ -165,7 +165,7 @@ vocal = <<
   \break
 
   bes2. ees,4
-  ees'2 des4 c
+  ees'2 des4 c8 bes8~
   bes2 c4 des
   
   \break
