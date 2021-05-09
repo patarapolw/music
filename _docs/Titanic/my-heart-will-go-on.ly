@@ -25,7 +25,7 @@ vocal = <<
     }
     
     cis1:m b a b cis:m b a gis2:m fis:m
-    cis1:m b a b cis:m b a b2 a e1
+    cis1:m b a b cis:m b a b2 a e1 e
     
     \repeat volta 2 {
       e1 b a e2 b
@@ -92,7 +92,7 @@ vocal = <<
   
   dis e2 dis4
   dis e2 fis4
-  gis2 fis e1
+  gis2 fis e1~ e
   
   \break
   
